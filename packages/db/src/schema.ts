@@ -7,6 +7,7 @@ import {
   timestamp,
   uuid,
   varchar,
+  interval,
 } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -44,6 +45,8 @@ export const User = pgTable("user", {
 
 export const UserRelations = relations(User, ({ many }) => ({
   accounts: many(Account),
+  windowActivities: many(WindowActivity),
+  applicationUsages: many(ApplicationUsage),
 }));
 
 export const Account = pgTable(
@@ -90,3 +93,64 @@ export const Session = pgTable("session", {
 export const SessionRelations = relations(Session, ({ one }) => ({
   user: one(User, { fields: [Session.userId], references: [User.id] }),
 }));
+
+// New tables for time tracking
+
+export const WindowActivity = pgTable("window_activity", {
+  id: uuid("id").notNull().primaryKey().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => User.id, { onDelete: "cascade" }),
+  windowTitle: varchar("window_title", { length: 512 }).notNull(),
+  applicationName: varchar("application_name", { length: 255 }).notNull(),
+  url: varchar("url", { length: 2048 }),
+  startTime: timestamp("start_time", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
+  endTime: timestamp("end_time", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
+  duration: interval("duration").notNull(),
+});
+
+export const WindowActivityRelations = relations(WindowActivity, ({ one }) => ({
+  user: one(User, { fields: [WindowActivity.userId], references: [User.id] }),
+}));
+
+export const ApplicationUsage = pgTable("application_usage", {
+  id: uuid("id").notNull().primaryKey().defaultRandom(),
+  userId: uuid("userId")
+    .notNull()
+    .references(() => User.id, { onDelete: "cascade" }),
+  applicationName: varchar("application_name", { length: 255 }).notNull(),
+  date: timestamp("date", {
+    mode: "date",
+    withTimezone: true,
+  }).notNull(),
+  totalDuration: interval("total_duration").notNull(),
+});
+
+export const ApplicationUsageRelations = relations(ApplicationUsage, ({ one }) => ({
+  user: one(User, { fields: [ApplicationUsage.userId], references: [User.id] }),
+}));
+
+export const CreateWindowActivitySchema = createInsertSchema(WindowActivity, {
+  windowTitle: z.string().max(512),
+  applicationName: z.string().max(255),
+  url: z.string().max(2048).optional(),
+  startTime: z.date(),
+  endTime: z.date(),
+  duration: z.string(), // Interval is represented as a string in the schema
+}).omit({
+  id: true,
+});
+
+export const CreateApplicationUsageSchema = createInsertSchema(ApplicationUsage, {
+  applicationName: z.string().max(255),
+  date: z.date(),
+  totalDuration: z.string(), // Interval is represented as a string in the schema
+}).omit({
+  id: true,
+});

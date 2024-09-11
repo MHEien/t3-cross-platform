@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { handlers, isSecureContext } from "@acme/auth";
 
-export const runtime = "edge";
+//export const runtime = "edge";
 
 const REDIRECT_COOKIE_NAME = "__acme-redirect-state";
 
